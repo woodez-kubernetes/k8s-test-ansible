@@ -1,0 +1,12 @@
+---
+# Common tasks for Kubernetes testing
+
+- name: Ensure kubectl is installed
+  command: kubectl version --client
+  register: kubectl_version
+  changed_when: false
+  failed_when: false
+
+- name: Display kubectl version
+  debug:
+    msg: "kubectl is installed: {{ kubectl_version.stdout_lines[0] if kubectl_version.rc == 0 else 'Not installed' }}"

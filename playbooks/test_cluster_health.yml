@@ -1,0 +1,43 @@
+---
+# Example playbook for testing Kubernetes cluster health
+- name: Test Kubernetes Cluster Health
+  hosts: localhost
+  become: false
+  gather_facts: false
+
+  tasks:
+    - name: Check cluster info
+      kubernetes.core.k8s_cluster_info:
+      register: cluster_info
+
+    - name: Display cluster version
+      debug:
+        msg: "Kubernetes version: {{ cluster_info.version.server.kubernetes.gitVersion }}"
+
+    - name: Get all nodes
+      kubernetes.core.k8s_info:
+        kind: Node
+      register: nodes
+
+    - name: Check node status
+      assert:
+        that:
+          - item.status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | first == 'True'
+        fail_msg: "Node {{ item.metadata.name }} is not ready"
+        success_msg: "Node {{ item.metadata.name }} is ready"
+      loop: "{{ nodes.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+
+    - name: Get system pods
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: kube-system
+      register: system_pods
+
+    - name: Check system pods are running
+      assert:
+        that:
+          - system_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length > 0
+        fail_msg: "Not all system pods are running"
+        success_msg: "System pods are healthy"
